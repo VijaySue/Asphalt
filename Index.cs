@@ -17,37 +17,131 @@ using System.Windows.Forms;
 
 namespace Asphalt
 {
+    /// <summary>
+    /// 系统主窗体类，作为整个沥青生产控制系统的主界面和导航中心
+    /// 负责管理系统的各个功能模块，如监控、报表、配方管理等
+    /// 提供了界面导航、自适应布局和系统状态监控功能
+    /// </summary>
     public partial class Index : Form
     {
+        /// <summary>
+        /// 窗体尺寸参数，用于自适应布局计算
+        /// </summary>
         double x, y;         // 用于自适应
+        
+        /// <summary>
+        /// 窗体最大化状态标记
+        /// </summary>
         string bz = "最大化";
+        
+        /// <summary>
+        /// 定时器，用于定期刷新系统状态
+        /// </summary>
         private System.Threading.Timer timer = null;
+        
+        /// <summary>
+        /// 监控界面实例，显示生产过程的实时状态
+        /// </summary>
         public Monitor ui1 = null;
+        
+        /// <summary>
+        /// 报表界面实例，用于生成和查看生产报表
+        /// </summary>
         public Report ui2 = null;
+        
+        /// <summary>
+        /// 配方管理界面实例，用于管理不同的生产配方
+        /// </summary>
         public Formula ui3 = null;
+        
+        /// <summary>
+        /// 参数范围设置界面实例，用于设定各项参数的正常范围
+        /// </summary>
         public Range ui4 = null;
+        
+        /// <summary>
+        /// 系统设置界面实例，用于配置系统参数
+        /// </summary>
         public Setting ui5 = null;
+        
+        /// <summary>
+        /// 生产曲线界面实例，用于查看生产参数的变化曲线
+        /// </summary>
         public Curve ui6 = null;
+        
+        /// <summary>
+        /// 重量校准界面实例，用于对称重系统进行校准
+        /// </summary>
         public Weight ui7 = null;
+        
+        /// <summary>
+        /// 电气控制界面实例，用于控制电气设备
+        /// </summary>
         public Elec ui8 = null;
+        
+        /// <summary>
+        /// 权限管理界面实例，用于管理用户权限
+        /// </summary>
         public Permission ui10 = null;
+        
+        /// <summary>
+        /// 延时设置界面实例，用于设置各个生产环节的延时参数
+        /// </summary>
         public static Delays ui9 = null;
+        
+        /// <summary>
+        /// 急停标志，true表示系统处于急停状态
+        /// </summary>
         public static bool flag1 = false;       // 急停
+        
+        /// <summary>
+        /// 系统开关标志，true表示系统已启动
+        /// </summary>
         public static bool flag2 = false;       // 开关
+        
+        /// <summary>
+        /// 操作模式标志，false表示手动模式，true表示自动模式
+        /// </summary>
         public static bool flag3 = false;        // false手动，true自动
+        
+        /// <summary>
+        /// 附加状态标志
+        /// </summary>
         public static bool flag4 = false;
+        
+        /// <summary>
+        /// 当前显示界面的ID，用于判断当前显示的是否为监控界面
+        /// </summary>
         private int id;                         // 判断当前显示是否为监控界面
+        
+        /// <summary>
+        /// 当前累计产量
+        /// </summary>
         public static int curSum = 0;
+        
+        /// <summary>
+        /// 设定累计产量
+        /// </summary>
         public static int setSum = 0;
 
+        /// <summary>
+        /// 构造函数，初始化主窗体和各个功能模块
+        /// </summary>
         public Index()
         {
+            // 初始化窗体组件
             InitializeComponent();
+            // 禁用跨线程调用检查，允许在非UI线程更新UI元素
             Control.CheckForIllegalCrossThreadCalls = false;
+            // 设置导航栏停靠方式
             uiNavBar1.Dock = DockStyle.None;
+            // 初始化显示界面ID为1(监控界面)
             id = 1;
+            // 获取窗体初始尺寸，用于自适应布局计算
             x = this.Width;
             y = this.Height;
+            
+            // 初始化各个功能模块界面
             ui1 = new Monitor();
             ui2 = new Report();
             ui3 = new Formula();
@@ -58,6 +152,8 @@ namespace Asphalt
             ui8 = new Elec();
             ui9 = new Delays();
             ui10 = new Permission();
+            
+            // 将各个功能模块添加到主面板
             panel1.Controls.Add(ui1);
             panel1.Controls.Add(ui2);
             panel1.Controls.Add(ui3);
@@ -70,28 +166,47 @@ namespace Asphalt
             ui10.TopLevel = false;      // ui10的父类为Form不同于其它界面的父类UserControl，不能直接Add
             ui10.Parent = panel1;
             ui10.Show();
+            
+            // 获取控件标签，用于自适应布局
             getTag(this);
+            
+            // 初始化定时器，定期刷新系统状态
             timer = new System.Threading.Timer(refresh, null, 0, Timeout.Infinite);
         }
 
+        /// <summary>
+        /// 定时刷新方法，用于更新系统状态和界面显示
+        /// </summary>
+        /// <param name="source">定时器回调参数</param>
         private void refresh(object source)
         {
+            // 从PLC读取系统状态标志
             flag1 = (Plc.plc1.ReadByte("M10").Content & 4).Equals(4);
             flag2 = (Plc.plc1.ReadByte("M10").Content & 1).Equals(1);
             flag4 = (Plc.plc1.ReadByte("M9").Content & 16).Equals(16);
             autoFlag = !((Plc.plc1.ReadByte("M10").Content & 2).Equals(2));
+            
+            // 更新界面控件状态
             start.Image = flag2 ? global::Asphalt.Properties.Resources.绿色按钮3d : global::Asphalt.Properties.Resources.红色按钮3D;
             inStop.Image = flag1 ? global::Asphalt.Properties.Resources.绿色按钮3d : global::Asphalt.Properties.Resources.红色按钮3D;
             inStop.Image = flag4 ? global::Asphalt.Properties.Resources.绿色按钮3d : global::Asphalt.Properties.Resources.红色按钮3D;
             auto.SwitchStatus = autoFlag;
+            
+            // 设置下一次执行时间为200毫秒后
             timer.Change(200, Timeout.Infinite);
         }
 
+        /// <summary>
+        /// 获取控件标签方法，递归获取所有控件的尺寸和位置信息，用于自适应布局
+        /// </summary>
+        /// <param name="contr">要处理的控件</param>
         private void getTag(Control contr)
         {
             foreach (Control con in contr.Controls)
             {
+                // 记录控件的宽度、高度、左边距、顶边距和字体大小
                 con.Tag = con.Width + ";" + con.Height + ";" + con.Left + ";" + con.Top + ";" + con.Font.Size;
+                // 如果控件包含子控件，则递归处理
                 if (con.Controls.Count > 0)
                 {
                     getTag(con);
